@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
+// ignore:depend_on_referenced_packages
+import 'package:flutter_web_plugins/url_strategy.dart';
 
 void main() {
-  runApp(App());
+  usePathUrlStrategy();
+  runApp(ProviderScope(child: App()));
 }
 
 class UserInfo extends ChangeNotifier {
@@ -20,26 +23,10 @@ class UserInfo extends ChangeNotifier {
   }
 }
 
-class App extends StatelessWidget {
-  App({super.key});
+final userInfoProvider = ChangeNotifierProvider((ref) => UserInfo());
 
-  final userInfo = UserInfo();
-
-  @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider<UserInfo>.value(
-      value: userInfo,
-      child: MaterialApp.router(
-        routerConfig: router,
-        theme: ThemeData(
-          primarySwatch: Colors.teal,
-          useMaterial3: false,
-        ),
-      ),
-    );
-  }
-
-  late final router = GoRouter(
+final goRouterProvider = Provider<GoRouter>((ref) {
+  return GoRouter(
     routes: [
       GoRoute(
         path: '/',
@@ -56,15 +43,17 @@ class App extends StatelessWidget {
         path: '/home',
         redirect: (context, state) => '/',
       ),
-      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => const LoginScreen(),
+      ),
     ],
-    refreshListenable: userInfo,
+    refreshListenable: ref.read(userInfoProvider),
     redirect: (context, state) {
       // Check if the user is logged in
-      bool isLoggedIn = context.read<UserInfo>().isLoggedIn;
-
+      final isLoggedIn = ref.read(userInfoProvider).isLoggedIn;
       // Check if the current navigation target is the login page
-      bool isLoggingIn = state.matchedLocation == '/login';
+      final isLoggingIn = state.matchedLocation == '/login';
 
       // Construct a string representing the location from which the user is being redirected
       // If the current location is the root ('/'), set savedLocation to an empty string
@@ -88,13 +77,40 @@ class App extends StatelessWidget {
       return null;
     },
   );
-}
+});
 
-class LoginScreen extends StatelessWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+class App extends ConsumerWidget {
+  App({super.key});
+
+  final userInfo = UserInfo();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final goRouter = ref.watch(goRouterProvider);
+    return MaterialApp.router(
+      routerConfig: goRouter,
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primarySwatch: Colors.teal,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.teal,
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
+        textTheme: const TextTheme(
+          titleMedium: TextStyle(fontSize: 18),
+          bodyMedium: TextStyle(fontSize: 24),
+        ),
+      ),
+    );
+  }
+}
+
+class LoginScreen extends ConsumerWidget {
+  const LoginScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Welcome!'),
@@ -102,11 +118,9 @@ class LoginScreen extends StatelessWidget {
       body: Center(
         child: ElevatedButton(
           onPressed: () {
-            context.read<UserInfo>().logIn();
+            ref.read(userInfoProvider).logIn();
           },
-          child: const Text(
-            'Login',
-          ),
+          child: const Text('Login'),
         ),
       ),
     );
@@ -121,12 +135,11 @@ class DetailsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          title: const Text(
-            'Details Screen',
-          ),
-        ),
-        body: Center(child: Text('Details of item #$id')));
+      appBar: AppBar(
+        title: const Text('Details Screen'),
+      ),
+      body: Center(child: Text('Details of item #$id')),
+    );
   }
 }
 
@@ -137,23 +150,16 @@ class MainScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Deep Links example',
-        ),
+        title: const Text('Deep Links example'),
       ),
-      body: ListView.builder(
-        itemBuilder: (context, index) => GestureDetector(
+      body: ListView.separated(
+        itemBuilder: (context, index) => ListTile(
           onTap: () => context.go('/details/$index'),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text('Item #$index'),
-              ),
-              const Divider(),
-            ],
-          ),
+          title: Text('Item #$index'),
+        ),
+        separatorBuilder: (_, __) => Divider(
+          height: 0.5,
+          color: Colors.grey.shade300,
         ),
         itemCount: 15,
       ),
