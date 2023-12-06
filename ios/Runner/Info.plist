@@ -9,12 +9,12 @@
 			<string></string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>custom</string>
+				<string>yourScheme</string>
 			</array>
 		</dict>
 	</array>
 	<key>FlutterDeepLinkingEnabled</key>
-  <true/>
+    <true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
